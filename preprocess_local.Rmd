@@ -1,0 +1,135 @@
+---
+title: "preprocessing"
+output: html_document
+---
+python으로 EDA한 글: https://arena.kakao.com/forum/topics/191
+
+******** R studio 새로 열 때마다 아래 chunk 돌려주세용
+data file은 최초 한번만 read해주시면 됩니다.
+
+1. Parsing json file as data frame
+```{r}
+# 작업경로
+# Project 폴더
+# ㄴ data 폴더
+#    ㄴ song_meta.json 
+#    ㄴ train.json
+#    ㄴ genre_gn_all.json
+# ㄴ R or Rmd 파일들
+# 위와 같이 저장하고 작업경로 본인 컴퓨터상에서 Project 폴더로 설정해주세요 (코드 통일을 위해서)
+# 예시 : setwd("D:/수강과목/DSR/Project")
+
+if (!require("ggplot2")) install.packages("ggplot2")
+library(ggplot2)
+if (!require("dplyr")) install.packages("dplyr")
+library(dplyr)
+if (!require("jsonlite")) install.packages("jsonlite")
+library(jsonlite)
+if (!require("data.table")) install.packages("data.table")
+library(data.table)
+if (!require("stringr")) install.packages("stringr")
+library(stringr)
+# 분석하면서 새로 쓰인 package는 아래 공간에 추가해주세요.
+
+
+# Importing python running package (if needed)
+# if (!require("reticulate")) install.packages("reticulate")
+# library(reticulate)
+```
+
+  1) genre_gn_all.json
+```{r}
+# 파일 로드할 때 한글 깨짐 방지
+Sys.getlocale()
+Sys.setlocale("LC_ALL", "C")
+df <- fromJSON(readLines("./data/genre_gn_all.json", encoding = "UTF-8"))
+Sys.setlocale("LC_ALL", "Korean")
+
+df <- as.data.frame(df, stringsAsFactors = FALSE)
+t_df <- t(df)
+# View(new_df)
+t_df <- as.data.frame(t_df, stringsAsFactors = FALSE)
+new_df <- tibble::rownames_to_column(t_df, "gr_code")
+names(new_df)[2] <- c("gr_name")
+gr_df <- new_df
+
+# 가공하는 데에 사용한 object 삭제, genre code df만 남김
+rm("df", "t_df", "new_df")
+View(gr_df)
+str(gr_df)
+```
+
+  2) song_meta.json
+```{r}
+# Sys.setlocale("LC_ALL", "C")
+# df <- fromJSON(readLines("./data/song_meta.json", encoding = "UTF-8"))
+# Sys.setlocale("LC_ALL", "Korean")
+# df <- as.data.frame(df, stringsAsFactors = FALSE)
+
+song_df <- stream_in(file("./data/song_meta.json"))
+class(song_df)
+View(song_df)
+```
+  
+  3) train.json
+```{r}
+playlist_df <- stream_in(file("./data/train.json"))
+
+```
+
+2. Refine the data
+ 1) genre
+ 
+ Look up main categories of genre code
+```{r}
+main_gr <- gr_df$gr_code
+
+# Add main genre code column to gr_df 
+main_gr <- paste0(substr(main_gr, 1, 4), "00")
+main_gr
+gr_df <- gr_df %>% mutate(main_gr_code = main_gr)
+View(gr_df)
+gr_df <- gr_df[c(3, 1, 2)]
+
+# Make new data frame that contains only main gerne codes and their names 
+main_list <- grep("*[0-9][0-9][0][0]", gr_df$gr_code, value = T)
+main_gr_name <- gr_df$gr_name[gr_df$gr_code %in% main_list]
+main_gr_df <- cbind(data.frame(main_list, stringsAsFactors = FALSE), data.frame(main_gr_name, stringsAsFactors = FALSE))
+colnames(main_gr_df) = c("main_gr_code", "main_gr_name")
+View(main_gr_df)
+str(main_gr_df)
+
+rm("main_list", "main_gr")
+
+# Select all sub(detailed) genres in "랩/힙합" -> 얘처럼 같은 대분류에 다른 소분류가 여러 개 있음
+searchByName <- main_gr_df %>% filter(main_gr_name == "랩/힙합")
+gr_df %>% filter(gr_df$main_gr_code %in% searchByName$main_gr_code)
+
+# (Optional) The Same search function with user input
+userInput <- readline("Enter main genre: ")
+searchByName <- main_gr_df %>% filter(main_gr_name == userInput)
+gr_df %>% filter(gr_df$main_gr_code %in% searchByName$main_gr_code)
+
+# Which high genre has the most sub(detailed) genres? 
+sub_gr_count <- gr_df %>% group_by(main_gr_code) %>% summarise(numOfGenres = n()) %>% mutate(main_gr_name = main_gr_df$main_gr_name)
+sub_gr_count <- sub_gr_count[c(1, 3, 2)]
+sub_gr_count
+sub_gr_count %>% filter(numOfGenres == max(numOfGenres))
+# Its sub genres
+mostSub <- sub_gr_count %>% filter(numOfGenres == max(numOfGenres)) %>% select(main_gr_name)
+mostSub
+searchByName <- main_gr_df %>% filter(main_gr_name == mostSub$main_gr_name)
+gr_df %>% filter(gr_df$main_gr_code %in% searchByName$main_gr_code)
+
+```
+Comments:
+1. There are 254 rows of detailed genre codes and 30 rows of higher categories in genre codes. Higher genres have forms of GN--00.
+2. There are multiple high-genres with difference codes such as "랩/힙합", "R&B/Soul", etc.
+3. High genre with the most sub genres is "어린이/태교."
+
+
+ 2)
+```{r}
+# issue_date column - Convert character to date type
+```
+
