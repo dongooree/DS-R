@@ -29,6 +29,8 @@ if (!require("data.table")) install.packages("data.table")
 library(data.table)
 if (!require("stringr")) install.packages("stringr")
 library(stringr)
+if (!require("lubridate")) install.packages("lubridate")
+library(lubridate)
 # 분석하면서 새로 쓰인 package는 아래 공간에 추가해주세요.
 
 
@@ -78,8 +80,7 @@ playlist_df <- stream_in(file("./data/train.json"))
 ```
 
 2. Refine the data
- 1) genre
- 
+ 1) genres
  Look up main categories of genre code
 ```{r}
 main_gr <- gr_df$gr_code
@@ -110,7 +111,7 @@ userInput <- readline("Enter main genre: ")
 searchByName <- main_gr_df %>% filter(main_gr_name == userInput)
 gr_df %>% filter(gr_df$main_gr_code %in% searchByName$main_gr_code)
 
-# Which high genre has the most sub(detailed) genres? 
+# Which high genre has the most sub(detailed) genres? -> main gr각각을 unique한 것으로 생각하고 조회한 것
 sub_gr_count <- gr_df %>% group_by(main_gr_code) %>% summarise(numOfGenres = n()) %>% mutate(main_gr_name = main_gr_df$main_gr_name)
 sub_gr_count <- sub_gr_count[c(1, 3, 2)]
 sub_gr_count
@@ -121,15 +122,41 @@ mostSub
 searchByName <- main_gr_df %>% filter(main_gr_name == mostSub$main_gr_name)
 gr_df %>% filter(gr_df$main_gr_code %in% searchByName$main_gr_code)
 
+# Show bar plots -> 여기서는 main gr를 name으로 조회해서 sub gr가 합산되어 나옴
+sub_gr_count %>% ggplot(aes(x = main_gr_name, y = numOfGenres)) +
+  geom_bar(stat = "identity", fill = "#009A3E") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Main genres") +
+  ylab("Number of sub genres")
+
 ```
 Comments:
-1. There are 254 rows of detailed genre codes and 30 rows of higher categories in genre codes. Higher genres have forms of GN--00.
-2. There are multiple high-genres with difference codes such as "랩/힙합", "R&B/Soul", etc.
-3. High genre with the most sub genres is "어린이/태교."
+1. There are 254 rows of sub genre codes and 30 rows of main categories in genre codes. Main genres have forms of GN--00.
+2. There are multiple main genres with difference codes such as "랩/힙합", "R&B/Soul", etc.
+3. Unique main genre with the most sub genres is "어린이/태교." (17 sub genres)
+4. In bar plot, we looked up by genre names so that the main genre w/ the most subs is 록/메탈.
 
-
- 2)
+ 2) Songs
+ 
 ```{r}
 # issue_date column - Convert character to date type
+# song_meta는 새로 읽는 게 오래걸려서 새 df에 옮겨놓고 사용합니다.
+sg_df <- song_df
+
+sg_df$issue_date <- ymd(sg_df$issue_date)   # 21620개의 NA & 2022년 issue도 있음ㅋㅋ
+head(song_df)
+range(song_df$issue_date, na.rm = TRUE)
+# How many songs 
 ```
+Comments:
+1. There are 21620 NAs in issue_date column.
+
+
+ 3) Playlists
+```{r}
+
+```
+ 
+3. EDA
+ 3) Make word cloud with hashtags
 
