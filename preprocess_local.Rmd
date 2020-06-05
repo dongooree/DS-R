@@ -144,12 +144,34 @@ Comments:
 sg_df <- song_df
 
 sg_df$issue_date <- ymd(sg_df$issue_date)   # 21620개의 NA & 2022년 issue도 있음ㅋㅋ
-head(song_df)
-range(song_df$issue_date, na.rm = TRUE)
-# How many songs 
+head(sg_df)
+# What is the time period of issue dates?
+range(sg_df$issue_date, na.rm = TRUE)
+# How many songs in each year?
+year_cnt <- sg_df %>% group_by(year(issue_date)) %>% summarise(song_cnt = n())
+na.omit(year_cnt)
+colnames(year_cnt) = c("year", "song_cnt")
+year_cnt
+year_cnt %>% ggplot(aes(x = year, y = song_cnt)) +
+  geom_bar(stat = "identity", fill = "#7CB4FD") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Year") +
+  ylab("Number of songs") +
+  ggtitle("Number of songs in each year")
+
+# Zoom in to 1975-2020
+year_cnt %>% ggplot(aes(x = year, y = song_cnt)) +
+  geom_bar(stat = "identity", fill = "#7CB4FD") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Year") +
+  ylab("Number of songs") +
+  ggtitle("Number of songs in each year")
 ```
 Comments:
 1. There are 21620 NAs in issue_date column.
+2. Time period of issue date of songs is from "1900-01-01" to "2022-01-13."
 
 
  3) Playlists
